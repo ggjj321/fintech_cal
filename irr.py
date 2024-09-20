@@ -7,3 +7,6 @@ def irr_cal(year, target):
 print(irr_cal(2, 0.2))
 print(irr_cal(5, 0.5))
 print(irr_cal(10, 1))
+
+print(irr_cal(10, 1))
+print(irr_cal(6, 0.55))
