@@ -22,7 +22,7 @@ def myStrategy(pastPriceVec, currentPrice):
     short_rsi_period=23
     long_rsi_period=178
     windowSize=11
-    alpha=-20
+    alpha=0
     beta=1
     
     action = 0  # action=1(buy), -1(sell), 0(hold), with 0 as the default action

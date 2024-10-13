@@ -76,7 +76,7 @@ def compute_kd(price_vec, period=14):
 
 #     return action
 
-def myStrategy(pastPriceVec, currentPrice, low_rsi_threshold=28, height_rsi_threshold=70, short_rsi_period=23, long_rsi_period=184, windowSize=11, alpha=-20, beta=1):
+def myStrategy(pastPriceVec, currentPrice, low_rsi_threshold=28, height_rsi_threshold=70, short_rsi_period=23, long_rsi_period=184, windowSize=11, alpha=0, beta=1):
     action = 0  # action=1(buy), -1(sell), 0(hold), with 0 as the default action
     dataLen = len(pastPriceVec)  # Length of the data vector
     if dataLen == 0:
@@ -98,15 +98,15 @@ def myStrategy(pastPriceVec, currentPrice, low_rsi_threshold=28, height_rsi_thre
     
     # Determine action based on RSI crossover, price vs MA, and thresholds alpha/beta
     if short_rsi is not None and long_rsi is not None:
-        if (short_rsi > long_rsi and (currentPrice - ma) > alpha) or short_rsi < low_rsi_threshold:  # Buy if short RSI crosses above long RSI and price is significantly above MA
+        if ((short_rsi - long_rsi> alpha) and (currentPrice - ma) > alpha) or short_rsi < low_rsi_threshold:  # Buy if short RSI crosses above long RSI and price is significantly above MA
             action = 1
-        elif (short_rsi < long_rsi and (currentPrice - ma) < -beta) or short_rsi > height_rsi_threshold:  # Sell if short RSI crosses below long RSI and price is significantly below MA
+        elif ((short_rsi - long_rsi < -beta) and (currentPrice - ma) < -beta) or short_rsi > height_rsi_threshold:  # Sell if short RSI crosses below long RSI and price is significantly below MA
             action = -1
 
     return action
 
 # Compute return rate over a given price vector, with 3 modifiable parameters
-def computeReturnRate(priceVec, low_rsi_threshold=28, height_rsi_threshold=70, short_rsi_period=23, long_rsi_period=184, windowSize=11, alpha=-20, beta=1):
+def computeReturnRate(priceVec, low_rsi_threshold=28, height_rsi_threshold=70, short_rsi_period=23, long_rsi_period=178, windowSize=11, alpha=0, beta=1):
 	capital=1000	# Initial available capital
 	capitalOrig=capital	 # original capital
 	dataCount=len(priceVec)				# day size
@@ -144,9 +144,9 @@ if __name__=='__main__':
 	df=pd.read_csv(sys.argv[1])	# read stock file
 	adjClose=df["Adj Close"].values		# get adj close as the price vector
  
-	windowSizeMin=3; windowSizeMax=20;	# Range of windowSize to explore
-	alphaMin=-20; alphaMax=-4;			# Range of alpha to explore
-	betaMin=-10; betaMax=5				# Range of beta to explore
+	# windowSizeMin=8; windowSizeMax=15;	# Range of windowSize to explore
+	# alphaMin=0; alphaMax=0;			# Range of alpha to explore
+	# betaMin=1; betaMax=1				# Range of beta to explore
 	# Start exhaustive search
 	# for windowSize in range(windowSizeMin, windowSizeMax+1):		# For-loop for windowSize
 	# 	print("windowSize=%d" %(windowSize))
@@ -176,8 +176,8 @@ if __name__=='__main__':
 	# 		returnRateBest=returnRate
 	# print("Best settings: kd_period=%d ==> returnRate=%f" %(best_kd_period,returnRateBest))
 	
-	short_rsi_peroid_min = 10; short_rsi_peroid_max = 35
-	long_rsi_peroid_min = 170; long_rsi_peroid_max = 200
+	short_rsi_peroid_min = 20; short_rsi_peroid_max = 35
+	long_rsi_peroid_min = 178; long_rsi_peroid_max = 230
 	for short_rsi_period in range(short_rsi_peroid_min, short_rsi_peroid_max+1):
 		print("\tshort_rsi_period=%d" %(short_rsi_period))
 		for long_rsi_period in range(long_rsi_peroid_min, long_rsi_peroid_max+1):
