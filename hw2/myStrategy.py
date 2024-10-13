@@ -20,7 +20,7 @@ def compute_rsi(price_vec, period=14):
 
 def myStrategy(pastPriceVec, currentPrice):
     short_rsi_period=23
-    long_rsi_period=184
+    long_rsi_period=178
     windowSize=11
     alpha=-20
     beta=1

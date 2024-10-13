@@ -117,7 +117,7 @@ def computeReturnRate(priceVec, low_rsi_threshold=28, height_rsi_threshold=70, s
 	# Run through each day
 	for ic in range(dataCount):
 		currentPrice=priceVec[ic]	# current price
-		suggestedAction[ic]=myStrategy(priceVec[0:ic], currentPrice)		# Obtain the suggested action
+		suggestedAction[ic]=myStrategy(priceVec[0:ic], currentPrice, short_rsi_period=short_rsi_period, long_rsi_period=long_rsi_period)		# Obtain the suggested action
 		# get real action by suggested action
 		if ic>0:
 			stockHolding[ic]=stockHolding[ic-1]	# The stock holding from the previous day
@@ -176,8 +176,8 @@ if __name__=='__main__':
 	# 		returnRateBest=returnRate
 	# print("Best settings: kd_period=%d ==> returnRate=%f" %(best_kd_period,returnRateBest))
 	
-	short_rsi_peroid_min = 37; short_rsi_peroid_max = 70
-	long_rsi_peroid_min = 184; long_rsi_peroid_max = 500
+	short_rsi_peroid_min = 10; short_rsi_peroid_max = 35
+	long_rsi_peroid_min = 170; long_rsi_peroid_max = 200
 	for short_rsi_period in range(short_rsi_peroid_min, short_rsi_peroid_max+1):
 		print("\tshort_rsi_period=%d" %(short_rsi_period))
 		for long_rsi_period in range(long_rsi_peroid_min, long_rsi_peroid_max+1):
