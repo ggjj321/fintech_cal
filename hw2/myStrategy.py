@@ -48,7 +48,7 @@ def myStrategy(pastPriceVec, currentPrice):
     if short_rsi is not None and long_rsi is not None:
         if (short_rsi > long_rsi and (currentPrice - ma) > alpha) or short_rsi < 28:  # Buy if short RSI crosses above long RSI and price is significantly above MA
             action = 1
-        elif (short_rsi < long_rsi and (currentPrice - ma) < -beta) or short_rsi > 70:  # Sell if short RSI crosses below long RSI and price is significantly below MA
+        elif (short_rsi < long_rsi and (currentPrice - ma) < -beta) or short_rsi > 78:  # Sell if short RSI crosses below long RSI and price is significantly below MA
             action = -1
 
     return action

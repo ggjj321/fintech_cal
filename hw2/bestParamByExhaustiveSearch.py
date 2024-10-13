@@ -76,7 +76,7 @@ def compute_kd(price_vec, period=14):
 
 #     return action
 
-def myStrategy(pastPriceVec, currentPrice, low_rsi_threshold=28, height_rsi_threshold=70, short_rsi_period=23, long_rsi_period=184, windowSize=11, alpha=0, beta=1):
+def myStrategy(pastPriceVec, currentPrice, low_rsi_threshold=28, heigh_rsi_threshold=70, short_rsi_period=23, long_rsi_period=178, windowSize=11, alpha=0, beta=1):
     action = 0  # action=1(buy), -1(sell), 0(hold), with 0 as the default action
     dataLen = len(pastPriceVec)  # Length of the data vector
     if dataLen == 0:
@@ -98,15 +98,15 @@ def myStrategy(pastPriceVec, currentPrice, low_rsi_threshold=28, height_rsi_thre
     
     # Determine action based on RSI crossover, price vs MA, and thresholds alpha/beta
     if short_rsi is not None and long_rsi is not None:
-        if ((short_rsi - long_rsi> alpha) and (currentPrice - ma) > alpha) or short_rsi < low_rsi_threshold:  # Buy if short RSI crosses above long RSI and price is significantly above MA
+        if (short_rsi > long_rsi and (currentPrice - ma) > alpha) or short_rsi < low_rsi_threshold:  # Buy if short RSI crosses above long RSI and price is significantly above MA
             action = 1
-        elif ((short_rsi - long_rsi < -beta) and (currentPrice - ma) < -beta) or short_rsi > height_rsi_threshold:  # Sell if short RSI crosses below long RSI and price is significantly below MA
+        elif (short_rsi < long_rsi and (currentPrice - ma) < -beta) or short_rsi > heigh_rsi_threshold:  # Sell if short RSI crosses below long RSI and price is significantly below MA
             action = -1
 
     return action
 
 # Compute return rate over a given price vector, with 3 modifiable parameters
-def computeReturnRate(priceVec, low_rsi_threshold=28, height_rsi_threshold=70, short_rsi_period=23, long_rsi_period=178, windowSize=11, alpha=0, beta=1):
+def computeReturnRate(priceVec, low_rsi_threshold=28, heigh_rsi_threshold=78, short_rsi_period=23, long_rsi_period=178, windowSize=11, alpha=0, beta=1):
 	capital=1000	# Initial available capital
 	capitalOrig=capital	 # original capital
 	dataCount=len(priceVec)				# day size
@@ -117,7 +117,7 @@ def computeReturnRate(priceVec, low_rsi_threshold=28, height_rsi_threshold=70, s
 	# Run through each day
 	for ic in range(dataCount):
 		currentPrice=priceVec[ic]	# current price
-		suggestedAction[ic]=myStrategy(priceVec[0:ic], currentPrice, short_rsi_period=short_rsi_period, long_rsi_period=long_rsi_period)		# Obtain the suggested action
+		suggestedAction[ic]=myStrategy(priceVec[0:ic], currentPrice, low_rsi_threshold=low_rsi_threshold, heigh_rsi_threshold=heigh_rsi_threshold )		# Obtain the suggested action
 		# get real action by suggested action
 		if ic>0:
 			stockHolding[ic]=stockHolding[ic-1]	# The stock holding from the previous day
@@ -176,32 +176,32 @@ if __name__=='__main__':
 	# 		returnRateBest=returnRate
 	# print("Best settings: kd_period=%d ==> returnRate=%f" %(best_kd_period,returnRateBest))
 	
-	short_rsi_peroid_min = 20; short_rsi_peroid_max = 35
-	long_rsi_peroid_min = 178; long_rsi_peroid_max = 230
-	for short_rsi_period in range(short_rsi_peroid_min, short_rsi_peroid_max+1):
-		print("\tshort_rsi_period=%d" %(short_rsi_period))
-		for long_rsi_period in range(long_rsi_peroid_min, long_rsi_peroid_max+1):
-			print("\tlong_rsi_period=%d" %(long_rsi_period))
-			returnRate=computeReturnRate(adjClose, short_rsi_period=short_rsi_period, long_rsi_period=long_rsi_period)		# Start the whole run with the given parameters
-			print(" ==> returnRate=%f " %(returnRate))
-			if returnRate > returnRateBest:		# Keep the best parameters
-					short_rsi_period_best = short_rsi_period
-					long_rsi_period_best = long_rsi_period
-					returnRateBest=returnRate
-	
-	print("Best settings: short_rsi_period=%d, long_rsi_period=%d ==> returnRate=%f" %(short_rsi_period_best, long_rsi_period_best,returnRateBest))		# Print the best result
-	
-	# low_rsi_threshold_min = 5; short_rsi_threshold_max = 35
-	# heigh_rsi_threshold_min = 70; heigh_rsi_threshold_max = 100
-	# for low_rsi_threshold in range(low_rsi_threshold_min, short_rsi_threshold_max+1):
-	# 	print("\tlow_rsi_threshold=%d" %(low_rsi_threshold))
-	# 	for heigh_rsi_threshold in range(heigh_rsi_threshold_min, heigh_rsi_threshold_max+1):
-	# 		print("\theigh_rsi_threshold=%d" %(heigh_rsi_threshold))
-	# 		returnRate=computeReturnRate(adjClose, low_rsi_threshold, heigh_rsi_threshold)		# Start the whole run with the given parameters
+	# short_rsi_peroid_min = 17; short_rsi_peroid_max = 35
+	# long_rsi_peroid_min = 160; long_rsi_peroid_max = 185
+	# for short_rsi_period in range(short_rsi_peroid_min, short_rsi_peroid_max+1):
+	# 	print("\tshort_rsi_period=%d" %(short_rsi_period))
+	# 	for long_rsi_period in range(long_rsi_peroid_min, long_rsi_peroid_max+1):
+	# 		print("\tlong_rsi_period=%d" %(long_rsi_period))
+	# 		returnRate=computeReturnRate(adjClose, short_rsi_period=short_rsi_period, long_rsi_period=long_rsi_period)		# Start the whole run with the given parameters
 	# 		print(" ==> returnRate=%f " %(returnRate))
 	# 		if returnRate > returnRateBest:		# Keep the best parameters
-	# 				low_rsi_threshold_best = low_rsi_threshold
-	# 				heigh_rsi_threshold_best = heigh_rsi_threshold
+	# 				short_rsi_period_best = short_rsi_period
+	# 				long_rsi_period_best = long_rsi_period
 	# 				returnRateBest=returnRate
 	
-	# print("Best settings: low_rsi_threshold_best=%d, heigh_rsi_threshold_best=%d ==> returnRate=%f" %(low_rsi_threshold_best, heigh_rsi_threshold_best,returnRateBest))		# Print the best result
+	# print("Best settings: short_rsi_period=%d, long_rsi_period=%d ==> returnRate=%f" %(short_rsi_period_best, long_rsi_period_best,returnRateBest))		# Print the best result
+	
+	low_rsi_threshold_min = 5; short_rsi_threshold_max = 35
+	heigh_rsi_threshold_min = 70; heigh_rsi_threshold_max = 100
+	for low_rsi_threshold in range(low_rsi_threshold_min, short_rsi_threshold_max+1):
+		print("\tlow_rsi_threshold=%d" %(low_rsi_threshold))
+		for heigh_rsi_threshold in range(heigh_rsi_threshold_min, heigh_rsi_threshold_max+1):
+			print("\theigh_rsi_threshold=%d" %(heigh_rsi_threshold))
+			returnRate=computeReturnRate(adjClose)		# Start the whole run with the given parameters
+			print(" ==> returnRate=%f " %(returnRate))
+			if returnRate > returnRateBest:		# Keep the best parameters
+					low_rsi_threshold_best = low_rsi_threshold
+					heigh_rsi_threshold_best = heigh_rsi_threshold
+					returnRateBest=returnRate
+	
+	print("Best settings: low_rsi_threshold_best=%d, heigh_rsi_threshold_best=%d ==> returnRate=%f" %(low_rsi_threshold_best, heigh_rsi_threshold_best,returnRateBest))		# Print the best result
