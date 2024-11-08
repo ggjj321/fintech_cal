@@ -76,7 +76,7 @@ def compute_kd(price_vec, period=14):
 
 #     return action
 
-def myStrategy(pastPriceVec, currentPrice, low_rsi_threshold=28, heigh_rsi_threshold=70, short_rsi_period=23, long_rsi_period=178, windowSize=11, alpha=0, beta=1):
+def myStrategy(pastPriceVec, currentPrice, low_rsi_threshold=28, heigh_rsi_threshold=78, short_rsi_period=23, long_rsi_period=178, windowSize=11, alpha=0, beta=1):
     action = 0  # action=1(buy), -1(sell), 0(hold), with 0 as the default action
     dataLen = len(pastPriceVec)  # Length of the data vector
     if dataLen == 0:
@@ -117,7 +117,7 @@ def computeReturnRate(priceVec, low_rsi_threshold=28, heigh_rsi_threshold=78, sh
 	# Run through each day
 	for ic in range(dataCount):
 		currentPrice=priceVec[ic]	# current price
-		suggestedAction[ic]=myStrategy(priceVec[0:ic], currentPrice, low_rsi_threshold=low_rsi_threshold, heigh_rsi_threshold=heigh_rsi_threshold )		# Obtain the suggested action
+		suggestedAction[ic]=myStrategy(priceVec[0:ic], currentPrice, windowSize=windowSize, alpha=alpha, beta=beta)		# Obtain the suggested action
 		# get real action by suggested action
 		if ic>0:
 			stockHolding[ic]=stockHolding[ic-1]	# The stock holding from the previous day
@@ -144,25 +144,25 @@ if __name__=='__main__':
 	df=pd.read_csv(sys.argv[1])	# read stock file
 	adjClose=df["Adj Close"].values		# get adj close as the price vector
  
-	# windowSizeMin=8; windowSizeMax=15;	# Range of windowSize to explore
-	# alphaMin=0; alphaMax=0;			# Range of alpha to explore
-	# betaMin=1; betaMax=1				# Range of beta to explore
+	windowSizeMin=11; windowSizeMax=25;	# Range of windowSize to explore
+	alphaMin=-10; alphaMax=5;			# Range of alpha to explore
+	betaMin=-5; betaMax=5				# Range of beta to explore
 	# Start exhaustive search
-	# for windowSize in range(windowSizeMin, windowSizeMax+1):		# For-loop for windowSize
-	# 	print("windowSize=%d" %(windowSize))
-	# 	for alpha in range(alphaMin, alphaMax+1):	    	# For-loop for alpha
-	# 		print("\talpha=%d" %(alpha))
-	# 		for beta in range(betaMin, betaMax+1):		# For-loop for beta
-	# 			print("\t\tbeta=%d" %(beta), end="")	# No newline
-	# 			returnRate=computeReturnRate(adjClose, windowSize=windowSize, alpha=alpha, beta=beta)		# Start the whole run with the given parameters
-	# 			print(" ==> returnRate=%f " %(returnRate))
-	# 			if returnRate > returnRateBest:		# Keep the best parameters
-	# 				windowSizeBest=windowSize
-	# 				alphaBest=alpha
-	# 				betaBest=beta
-	# 				returnRateBest=returnRate
+	for windowSize in range(windowSizeMin, windowSizeMax+1):		# For-loop for windowSize
+		print("windowSize=%d" %(windowSize))
+		for alpha in range(alphaMin, alphaMax+1):	    	# For-loop for alpha
+			print("\talpha=%d" %(alpha))
+			for beta in range(betaMin, betaMax+1):		# For-loop for beta
+				print("\t\tbeta=%d" %(beta), end="")	# No newline
+				returnRate=computeReturnRate(adjClose, windowSize=windowSize, alpha=alpha, beta=beta)		# Start the whole run with the given parameters
+				print(" ==> returnRate=%f " %(returnRate))
+				if returnRate > returnRateBest:		# Keep the best parameters
+					windowSizeBest=windowSize
+					alphaBest=alpha
+					betaBest=beta
+					returnRateBest=returnRate
      
-	# print("Best settings: windowSize=%d, alpha=%d, beta=%d ==> returnRate=%f" %(windowSizeBest,alphaBest,betaBest,returnRateBest))		# Print the best result
+	print("Best settings: windowSize=%d, alpha=%d, beta=%d ==> returnRate=%f" %(windowSizeBest,alphaBest,betaBest,returnRateBest))		# Print the best result
 	# returnRate=computeReturnRate(adjClose)
  
 	# kd_period_min = 200; kd_period_max = 300
@@ -191,17 +191,17 @@ if __name__=='__main__':
 	
 	# print("Best settings: short_rsi_period=%d, long_rsi_period=%d ==> returnRate=%f" %(short_rsi_period_best, long_rsi_period_best,returnRateBest))		# Print the best result
 	
-	low_rsi_threshold_min = 5; short_rsi_threshold_max = 35
-	heigh_rsi_threshold_min = 70; heigh_rsi_threshold_max = 100
-	for low_rsi_threshold in range(low_rsi_threshold_min, short_rsi_threshold_max+1):
-		print("\tlow_rsi_threshold=%d" %(low_rsi_threshold))
-		for heigh_rsi_threshold in range(heigh_rsi_threshold_min, heigh_rsi_threshold_max+1):
-			print("\theigh_rsi_threshold=%d" %(heigh_rsi_threshold))
-			returnRate=computeReturnRate(adjClose)		# Start the whole run with the given parameters
-			print(" ==> returnRate=%f " %(returnRate))
-			if returnRate > returnRateBest:		# Keep the best parameters
-					low_rsi_threshold_best = low_rsi_threshold
-					heigh_rsi_threshold_best = heigh_rsi_threshold
-					returnRateBest=returnRate
+	# low_rsi_threshold_min = 5; short_rsi_threshold_max = 35
+	# heigh_rsi_threshold_min = 70; heigh_rsi_threshold_max = 100
+	# for low_rsi_threshold in range(low_rsi_threshold_min, short_rsi_threshold_max+1):
+	# 	print("\tlow_rsi_threshold=%d" %(low_rsi_threshold))
+	# 	for heigh_rsi_threshold in range(heigh_rsi_threshold_min, heigh_rsi_threshold_max+1):
+	# 		print("\theigh_rsi_threshold=%d" %(heigh_rsi_threshold))
+	# 		returnRate=computeReturnRate(adjClose)		# Start the whole run with the given parameters
+	# 		print(" ==> returnRate=%f " %(returnRate))
+	# 		if returnRate > returnRateBest:		# Keep the best parameters
+	# 				low_rsi_threshold_best = low_rsi_threshold
+	# 				heigh_rsi_threshold_best = heigh_rsi_threshold
+	# 				returnRateBest=returnRate
 	
-	print("Best settings: low_rsi_threshold_best=%d, heigh_rsi_threshold_best=%d ==> returnRate=%f" %(low_rsi_threshold_best, heigh_rsi_threshold_best,returnRateBest))		# Print the best result
+	# print("Best settings: low_rsi_threshold_best=%d, heigh_rsi_threshold_best=%d ==> returnRate=%f" %(low_rsi_threshold_best, heigh_rsi_threshold_best,returnRateBest))		# Print the best result
