@@ -81,61 +81,85 @@ def myActionSimple(priceMat, transFeeRate):
 def myAction01(priceMat, transFeeRate):
     actionMat = []  # An k-by-4 action matrix which holds k transaction records.
 
-    nextDay = 1
     dataLen, stockCount = priceMat.shape  # day size & stock count
     initial_cash = 1000
-    holding = {
-        "cash": [initial_cash],
-        **{f"stock{i}": [initial_cash / (priceMat[0][i] * (1 + transFeeRate))] for i in range(stockCount)}
-    }
-    each_move = {
-        "cash": [[0, -1, -1, 0]],
-        **{f"stock{i}": [[0, -1, i, initial_cash]] for i in range(stockCount)}
-    }
+
+    holding = {'cash': [initial_cash]}
+    each_move = {'cash': [[0, -1, -1, 0]]}
+
+    # Initialize holdings and moves for each stock
+    for i in range(stockCount):
+        initial_stock = initial_cash / priceMat[0][i]
+        holding[f'stock{i}'] = [initial_stock]
+        each_move[f'stock{i}'] = [[0, -1, i, initial_cash]]
 
     for day in range(1, dataLen):
-        # case cash:
-        cash_choices = [holding["cash"][day - nextDay]] + [
-            holding[f"stock{i}"][day - nextDay] * priceMat[day][i] * (1 - transFeeRate)
-            for i in range(stockCount)
-        ]
-
-        max_cash = max(cash_choices)
-        holding["cash"].append(max_cash)
-        source_index = cash_choices.index(max_cash) - 1
-        each_move["cash"].append([day, source_index, -1, max_cash])
-
-        # case stocks:
+        # Update cash holdings
+        cash_possible_choices = [holding['cash'][day - 1]]
         for i in range(stockCount):
-            stock_choices = [
-                holding["cash"][day - nextDay] / (priceMat[day][i] * (1 + transFeeRate))
-            ] + [
-                holding[f"stock{j}"][day - nextDay] * priceMat[day][j] * (1 - transFeeRate) / (priceMat[day][i] * (1 + transFeeRate))
-                for j in range(stockCount) if j != i
-            ] + [holding[f"stock{i}"][day - nextDay]]
+            stock_value = holding[f'stock{i}'][day - 1] * priceMat[day][i] * (1 - transFeeRate)
+            cash_possible_choices.append(stock_value)
 
-            max_stock = max(stock_choices)
-            holding[f"stock{i}"].append(max_stock)
-            source_index = stock_choices.index(max_stock) - 1
-            each_move[f"stock{i}"].append([day, source_index, i, max_stock * priceMat[day][i]])
+        max_cash = max(cash_possible_choices)
+        holding['cash'].append(max_cash)
+        from_index = cash_possible_choices.index(max_cash) - 1  # -1 for cash, 0..stockCount-1 for stocks
 
-    final_all_value = [
-        holding["cash"][-1]
-    ] + [
-        holding[f"stock{i}"][-1] * priceMat[-1][i] * (1 - transFeeRate)
-        for i in range(stockCount)
-    ]
+        if from_index == -1:
+            each_move['cash'].append([day, -1, -1, 0])
+        else:
+            each_move['cash'].append([day, from_index, -1, max_cash])
 
-    max_index = final_all_value.index(max(final_all_value)) - 1
+        # Update holdings for each stock
+        for i in range(stockCount):
+            stock_possible_choices = []
+            # From cash to stock i
+            from_cash = holding['cash'][day - 1] / (priceMat[day][i] * (1 + transFeeRate))
+            stock_possible_choices.append(from_cash)
+            # From stocks to stock i (including staying in the same stock)
+            for j in range(stockCount):
+                if j == i:
+                    # Stay in the same stock
+                    stock_possible_choices.append(holding[f'stock{i}'][day - 1])
+                else:
+                    # Sell stock j and buy stock i
+                    stock_j_value = holding[f'stock{j}'][day - 1] * priceMat[day][j] * (1 - transFeeRate)
+                    to_stock_i = stock_j_value / (priceMat[day][i] * (1 + transFeeRate))
+                    stock_possible_choices.append(to_stock_i)
 
-    for back_action_index in range(dataLen - nextDay, -1, -1):
-        action = each_move["cash" if max_index == -1 else f"stock{max_index}"][back_action_index]
+            max_stock = max(stock_possible_choices)
+            holding[f'stock{i}'].append(max_stock)
+            from_index = stock_possible_choices.index(max_stock)
+
+            if from_index == i + 1:
+                # Stayed in the same stock
+                each_move[f'stock{i}'].append([day, i, i, 0])
+            else:
+                if from_index == 0:
+                    from_stock = -1  # From cash
+                else:
+                    from_stock = from_index - 1
+                action_amount = max_stock * priceMat[day][i]
+                each_move[f'stock{i}'].append([day, from_stock, i, action_amount])
+
+    # Backtracking to build actionMat
+    final_values = [holding['cash'][-1]]
+    for i in range(stockCount):
+        stock_value = holding[f'stock{i}'][-1] * priceMat[-1][i] * (1 - transFeeRate)
+        final_values.append(stock_value)
+
+    max_final_value = max(final_values)
+    max_index = final_values.index(max_final_value) - 1  # -1 for cash, 0..stockCount-1 for stocks
+
+    for day in range(dataLen - 1, -1, -1):
+        if max_index == -1:
+            action = each_move['cash'][day]
+        else:
+            action = each_move[f'stock{max_index}'][day]
         if action[3] != 0:
             actionMat.append(action)
         max_index = action[1]
 
     actionMat.reverse()
-
     return actionMat
 
 # An approach that allow non-consecutive K days to hold all cash without any stocks
