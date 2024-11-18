@@ -84,102 +84,56 @@ def myAction01(priceMat, transFeeRate):
     nextDay = 1
     dataLen, stockCount = priceMat.shape  # day size & stock count
     initial_cash = 1000
-    initial_stock0 = initial_cash / (priceMat[0][0] * (1 + transFeeRate))
-    initial_stock1 = initial_cash / (priceMat[0][1] * (1 + transFeeRate))
-    initial_stock2 = initial_cash / (priceMat[0][2] * (1 + transFeeRate))
-    initial_stock3 = initial_cash / (priceMat[0][3] * (1 + transFeeRate))
-    holding = {"cash" : [1000], "stock0" : [initial_stock0], "stock1" : [initial_stock1], "stock2" : [initial_stock2], "stock3" : [initial_stock3]}
-    each_move = {"cash" : [[0, -1, -1, 0]], "stock0" : [[0, -1, 0, 1000]], "stock1" : [[0, -1, 1, 1000]], "stock2" : [[0, -1, 2, 1000]], "stock3" : [[0, -1, 3, 1000]]}
+    holding = {
+        "cash": [initial_cash],
+        **{f"stock{i}": [initial_cash / (priceMat[0][i] * (1 + transFeeRate))] for i in range(stockCount)}
+    }
+    each_move = {
+        "cash": [[0, -1, -1, 0]],
+        **{f"stock{i}": [[0, -1, i, initial_cash]] for i in range(stockCount)}
+    }
 
     for day in range(1, dataLen):
         # case cash:
-        cash_possible_choise = [holding["cash"][day-nextDay], 
-                                holding["stock0"][day-nextDay] * priceMat[day][0] * (1 - transFeeRate),
-                                holding["stock1"][day-nextDay] * priceMat[day][1] * (1 - transFeeRate),
-                                holding["stock2"][day-nextDay] * priceMat[day][2] * (1 - transFeeRate),
-                                holding["stock3"][day-nextDay] * priceMat[day][3] * (1 - transFeeRate),
+        cash_choices = [holding["cash"][day - nextDay]] + [
+            holding[f"stock{i}"][day - nextDay] * priceMat[day][i] * (1 - transFeeRate)
+            for i in range(stockCount)
         ]
 
-        max_cash = max(cash_possible_choise)
+        max_cash = max(cash_choices)
         holding["cash"].append(max_cash)
-        if cash_possible_choise.index(max_cash) - 1 == -1:
-            each_move["cash"].append([day, -1, -1, 0])
-        else:
-            each_move["cash"].append([day, cash_possible_choise.index(max_cash) - 1, -1,  max_cash])
+        source_index = cash_choices.index(max_cash) - 1
+        each_move["cash"].append([day, source_index, -1, max_cash])
 
+        # case stocks:
+        for i in range(stockCount):
+            stock_choices = [
+                holding["cash"][day - nextDay] / (priceMat[day][i] * (1 + transFeeRate))
+            ] + [
+                holding[f"stock{j}"][day - nextDay] * priceMat[day][j] * (1 - transFeeRate) / (priceMat[day][i] * (1 + transFeeRate))
+                for j in range(stockCount) if j != i
+            ] + [holding[f"stock{i}"][day - nextDay]]
 
-        #case stock0
-        stock0_possible_choise = [holding["cash"][day-nextDay] / (priceMat[day][0] * (1 + transFeeRate)), 
-                                holding["stock0"][day-nextDay],
-                                (holding["stock1"][day-nextDay] * priceMat[day][1] * (1 - transFeeRate)) / (priceMat[day][0] * (1 + transFeeRate)),
-                                (holding["stock2"][day-nextDay] * priceMat[day][2] * (1 - transFeeRate)) / (priceMat[day][0] * (1 + transFeeRate)),
-                                (holding["stock3"][day-nextDay] * priceMat[day][3] * (1 - transFeeRate)) / (priceMat[day][0] * (1 + transFeeRate)),
-        ]
+            max_stock = max(stock_choices)
+            holding[f"stock{i}"].append(max_stock)
+            source_index = stock_choices.index(max_stock) - 1
+            each_move[f"stock{i}"].append([day, source_index, i, max_stock * priceMat[day][i]])
 
-        max_stock0 = max(stock0_possible_choise)
-        holding["stock0"].append(max_stock0)
-        if stock0_possible_choise.index(max_stock0) - 1 == 0:
-            each_move["stock0"].append([day, 0, 0, 0])
-        else:
-            each_move["stock0"].append([day, stock0_possible_choise.index(max_stock0) - 1, 0, max_stock0 * priceMat[day][0]])
+    final_all_value = [
+        holding["cash"][-1]
+    ] + [
+        holding[f"stock{i}"][-1] * priceMat[-1][i] * (1 - transFeeRate)
+        for i in range(stockCount)
+    ]
 
-        #case stock1
-        stock1_possible_choise = [holding["cash"][day-1] / (priceMat[day][1] * (1 + transFeeRate)), 
-                                (holding["stock0"][day-1] * priceMat[day][0] * (1 - transFeeRate)) / (priceMat[day][1] * (1 + transFeeRate)),
-                                holding["stock1"][day-1],
-                                (holding["stock2"][day-1] * priceMat[day][2] * (1 - transFeeRate)) / (priceMat[day][1] * (1 + transFeeRate)),
-                                (holding["stock3"][day-1] * priceMat[day][3] * (1 - transFeeRate)) / (priceMat[day][1] * (1 + transFeeRate)),
-        ]
-
-        max_stock1 = max(stock1_possible_choise)
-        holding["stock1"].append(max_stock1)
-        if stock1_possible_choise.index(max(stock1_possible_choise)) - 1 == 1:
-            each_move["stock1"].append([day, 1, 1, 0])
-        else:
-            each_move["stock1"].append([day, stock1_possible_choise.index(max_stock1) - 1, 1, max_stock1 * priceMat[day][1]])
-
-        #case stock2
-        stock2_possible_choise = [holding["cash"][day-1] / (priceMat[day][2] * (1 + transFeeRate)), 
-                                (holding["stock0"][day-1] * priceMat[day][0] * (1 - transFeeRate)) / (priceMat[day][2] * (1 + transFeeRate)),
-                                (holding["stock1"][day-1] * priceMat[day][1] * (1 - transFeeRate)) / (priceMat[day][2] * (1 + transFeeRate)),
-                                holding["stock2"][day-1],
-                                (holding["stock3"][day-1] * priceMat[day][3] * (1 - transFeeRate)) / (priceMat[day][2] * (1 + transFeeRate)),
-        ]
-
-        max_stock2 = max(stock2_possible_choise)
-        holding["stock2"].append(max_stock2)
-        if stock2_possible_choise.index(max_stock2) - 1 == 2:
-            each_move["stock2"].append([day, 2, 2, 0])
-        else:
-            each_move["stock2"].append([day, stock2_possible_choise.index(max_stock2) - 1, 2, max_stock2 * priceMat[day][2]])
-
-        #case stock3
-        stock3_possible_choise = [holding["cash"][day-1] / (priceMat[day][3] * (1 + transFeeRate)), 
-                                (holding["stock0"][day-1] * priceMat[day][0] * (1 - transFeeRate)) / (priceMat[day][3] * (1 + transFeeRate)),
-                                (holding["stock1"][day-1] * priceMat[day][1] * (1 - transFeeRate)) / (priceMat[day][3] * (1 + transFeeRate)),
-                                (holding["stock2"][day-1] * priceMat[day][2] * (1 - transFeeRate)) / (priceMat[day][3] * (1 + transFeeRate)),
-                                holding["stock3"][day-1],
-        ]
-
-        max_stock3 = max(stock3_possible_choise)
-        holding["stock3"].append(max_stock3)
-        if stock3_possible_choise.index(max_stock3) - 1 == 3:
-            each_move["stock3"].append([day, 3, 3, 0])
-        else:
-            each_move["stock3"].append([day, stock3_possible_choise.index(max_stock3) - 1, 3, max_stock3 * priceMat[day][3]])
-
-    final_all_value = [holding["cash"][-1], holding["stock0"][-1] * priceMat[-1][0] * (1 - transFeeRate), holding["stock1"][-1] * priceMat[-1][1]* (1 - transFeeRate), holding["stock2"][-1] * priceMat[-1][2] * (1 - transFeeRate), holding["stock3"][-1] * priceMat[-1][3] * (1 - transFeeRate)]
     max_index = final_all_value.index(max(final_all_value)) - 1
 
-    for back_action_index in range(dataLen-nextDay, -1 , -1):
-        if max_index == -1:
-            action = each_move["cash"][back_action_index]
-        else:
-            action = each_move[f"stock{max_index}"][back_action_index]
+    for back_action_index in range(dataLen - nextDay, -1, -1):
+        action = each_move["cash" if max_index == -1 else f"stock{max_index}"][back_action_index]
         if action[3] != 0:
             actionMat.append(action)
         max_index = action[1]
-    
+
     actionMat.reverse()
 
     return actionMat
