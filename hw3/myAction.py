@@ -169,194 +169,155 @@ def myAction02(priceMat, transFeeRate, K):
 
 # An approach that allow consecutive K days to hold all cash without any stocks    
 def myAction03(priceMat, transFeeRate, K):
+
+    dataLen, stockCount = priceMat.shape
+    initial_cash = 1000
+
     class ConsecutiveData:
-        def __init__(self) -> None:
+        def __init__(self):
             self.holding = {'cash': []}
             self.each_move = {'cash': []}
-
             for stock_index in range(stockCount):
                 self.holding[f"stock{stock_index}"] = []
                 self.each_move[f"stock{stock_index}"] = []
-
             self.final_income = 0
-        
+
         def sperate_cash(self, cash, spreate_day):
             self.holding['cash'].append(cash)
             self.each_move['cash'].append([spreate_day, -1, -1, 0])
-
             for i in range(stockCount):
                 initial_stock = cash / (priceMat[spreate_day][i] * (1 + transFeeRate))
                 self.holding[f'stock{i}'].append(initial_stock)
                 self.each_move[f'stock{i}'].append([spreate_day, -1, i, cash])
-        
+
         def take_back_cash(self, back_day):
             final_cash_choise = [self.holding['cash'][-1]]
-
             for stock_index in range(stockCount):
                 equal_value = self.holding[f'stock{stock_index}'][-1] * priceMat[back_day][stock_index] * (1 - transFeeRate)
                 final_cash_choise.append(equal_value)
-
             max_cash = max(final_cash_choise)
             from_index = final_cash_choise.index(max_cash) - 1
-
             self.holding["cash"].append(max_cash)
-
             if from_index == -1:
                 self.each_move["cash"].append([back_day, -1, -1, 0])
             else:
                 self.each_move["cash"].append([back_day, from_index, -1, max_cash])
 
-    actionMat = []  # An k-by-4 action matrix which holds k transaction records.
+    actionMat = []
 
-    dataLen, stockCount = priceMat.shape
-    initial_cash = 1000
+    max_final_income = 0
+    max_final_income_obj = None
 
-    each_consecutive_hodling_and_move = {}
     first_stage_end_time = 0
-    second_stage_start_time = K 
-    while second_stage_start_time < dataLen:
-        each_consecutive_hodling_and_move[f"{first_stage_end_time}_{second_stage_start_time}"] = ConsecutiveData()
-        consecutive_data = each_consecutive_hodling_and_move[f"{first_stage_end_time}_{second_stage_start_time}"]
+    second_stage_start_time = K
 
-        # first stage
+    while second_stage_start_time < dataLen:
+        consecutive_data = ConsecutiveData()
+
+        # stage1 
         if first_stage_end_time > 0:
             consecutive_data.sperate_cash(initial_cash, 0)
-
-            #dp
             for day in range(1, first_stage_end_time):
-                # Update cash holdings
+                # update cash
                 cash_possible_choices = [consecutive_data.holding['cash'][day - 1]]
                 for i in range(stockCount):
                     stock_value = consecutive_data.holding[f'stock{i}'][day - 1] * priceMat[day][i] * (1 - transFeeRate)
                     cash_possible_choices.append(stock_value)
-
                 max_cash = max(cash_possible_choices)
                 consecutive_data.holding['cash'].append(max_cash)
-                from_index = cash_possible_choices.index(max_cash) - 1  # -1 for cash, 0..stockCount-1 for stocks
-
+                from_index = cash_possible_choices.index(max_cash) - 1
                 if from_index == -1:
                     consecutive_data.each_move['cash'].append([day, -1, -1, 0])
                 else:
                     consecutive_data.each_move['cash'].append([day, from_index, -1, max_cash])
-
-                # Update holdings for each stock
+                # update stock
                 for i in range(stockCount):
                     stock_possible_choices = []
-                    # From cash to stock i
                     from_cash = consecutive_data.holding['cash'][day - 1] / (priceMat[day][i] * (1 + transFeeRate))
                     stock_possible_choices.append(from_cash)
-                    # From stocks to stock i (including staying in the same stock)
                     for j in range(stockCount):
                         if j == i:
-                            # Stay in the same stock
                             stock_possible_choices.append(consecutive_data.holding[f'stock{i}'][day - 1])
                         else:
-                            # Sell stock j and buy stock i
                             stock_j_value = consecutive_data.holding[f'stock{j}'][day - 1] * priceMat[day][j] * (1 - transFeeRate)
                             to_stock_i = stock_j_value / (priceMat[day][i] * (1 + transFeeRate))
                             stock_possible_choices.append(to_stock_i)
-
                     max_stock = max(stock_possible_choices)
                     consecutive_data.holding[f'stock{i}'].append(max_stock)
                     from_index = stock_possible_choices.index(max_stock)
-
                     if from_index == i + 1:
-                        # Stayed in the same stock
                         consecutive_data.each_move[f'stock{i}'].append([day, i, i, 0])
                     else:
-                        if from_index == 0:
-                            from_stock = -1  # From cash
-                        else:
-                            from_stock = from_index - 1
+                        from_stock = -1 if from_index == 0 else from_index - 1
                         action_amount = max_stock * priceMat[day][i]
                         consecutive_data.each_move[f'stock{i}'].append([day, from_stock, i, action_amount])
-
-            # take back
             consecutive_data.take_back_cash(first_stage_end_time)
 
-        # second_stage
+        # stage 2
         if first_stage_end_time != 0:
-            second_stage_initial_cash  = consecutive_data.holding['cash'][-1]
+            second_stage_initial_cash = consecutive_data.holding['cash'][-1]
         else:
             second_stage_initial_cash = initial_cash
-
         consecutive_data.sperate_cash(second_stage_initial_cash, second_stage_start_time)
-        # dp
         for day in range(second_stage_start_time + 1, dataLen - 1):
-            # Update cash holdings
             cash_possible_choices = [consecutive_data.holding['cash'][day - K - 1]]
             for i in range(stockCount):
                 stock_value = consecutive_data.holding[f'stock{i}'][day - K - 1] * priceMat[day][i] * (1 - transFeeRate)
                 cash_possible_choices.append(stock_value)
-
             max_cash = max(cash_possible_choices)
             consecutive_data.holding['cash'].append(max_cash)
-            from_index = cash_possible_choices.index(max_cash) - 1  # -1 for cash, 0..stockCount-1 for stocks
-
+            from_index = cash_possible_choices.index(max_cash) - 1
             if from_index == -1:
                 consecutive_data.each_move['cash'].append([day, -1, -1, 0])
             else:
                 consecutive_data.each_move['cash'].append([day, from_index, -1, max_cash])
-
-            # Update holdings for each stock
             for i in range(stockCount):
                 stock_possible_choices = []
-                # From cash to stock i
                 from_cash = consecutive_data.holding['cash'][day - K - 1] / (priceMat[day][i] * (1 + transFeeRate))
                 stock_possible_choices.append(from_cash)
-                # From stocks to stock i (including staying in the same stock)
                 for j in range(stockCount):
                     if j == i:
-                        # Stay in the same stock
                         stock_possible_choices.append(consecutive_data.holding[f'stock{i}'][day - K - 1])
                     else:
-                        # Sell stock j and buy stock i
-                        stock_j_value = consecutive_data.holding[f'stock{j}'][day - K- 1] * priceMat[day][j] * (1 - transFeeRate)
+                        stock_j_value = consecutive_data.holding[f'stock{j}'][day - K - 1] * priceMat[day][j] * (1 - transFeeRate)
                         to_stock_i = stock_j_value / (priceMat[day][i] * (1 + transFeeRate))
                         stock_possible_choices.append(to_stock_i)
-
                 max_stock = max(stock_possible_choices)
                 consecutive_data.holding[f'stock{i}'].append(max_stock)
                 from_index = stock_possible_choices.index(max_stock)
-
                 if from_index == i + 1:
-                    # Stayed in the same stock
                     consecutive_data.each_move[f'stock{i}'].append([day, i, i, 0])
                 else:
-                    if from_index == 0:
-                        from_stock = -1  # From cash
-                    else:
-                        from_stock = from_index - 1
+                    from_stock = -1 if from_index == 0 else from_index - 1
                     action_amount = max_stock * priceMat[day][i]
                     consecutive_data.each_move[f'stock{i}'].append([day, from_stock, i, action_amount])
-
         consecutive_data.take_back_cash(dataLen - 1)
         consecutive_data.final_income = consecutive_data.holding["cash"][-1]
 
+        # max
+        if consecutive_data.final_income > max_final_income:
+            max_final_income = consecutive_data.final_income
+            max_final_income_obj = consecutive_data
+
         first_stage_end_time += 1
         second_stage_start_time += 1
-    
-    max_final_income_obj = max(each_consecutive_hodling_and_move.values(), key=lambda x: x.final_income)
 
+    # construct actionMat
     action = max_final_income_obj.each_move["cash"][-1]
-
-    actionMat.append(action)
+    if action[-1] != 0:
+        actionMat.append(action)
     while True:
         previous_day = action[0] - 1
         previous_from = action[1]
-
         if previous_from == -1:
             finding_hold = max_final_income_obj.each_move["cash"]
         else:
             finding_hold = max_final_income_obj.each_move[f"stock{previous_from}"]
         previous_action = [item for item in finding_hold if item[0] == previous_day]
-        
-        if previous_action == []:
-            # 遇到發錢
+        if not previous_action:
             if action[1] == -1:
-                # 找收錢
                 find_tack_back_day = [item for item in max_final_income_obj.each_move["cash"] if item[0] == previous_day - K]
-                if find_tack_back_day == []:
+                if not find_tack_back_day:
                     break
                 else:
                     action = find_tack_back_day[0]
@@ -365,5 +326,7 @@ def myAction03(priceMat, transFeeRate, K):
         if action[-1] != 0:
             actionMat.append(action)
     actionMat.reverse()
+
     return actionMat
+
 

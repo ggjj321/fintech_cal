@@ -42,58 +42,38 @@ def computeReturnRate(priceMat, transFeeRate, actionMat, K, problem_type):
 				stockHolding[i] = stockHolding[i-1]	 # The stock holding from the previous action day
 				preDay = day  # previous action day
 			
-			if a == -1 and b >= 0 and capital > 0:  # Suggested action is "buy"
-				currentPrice = currentPriceVec[b]
-				if currentPrice <= 0:
-					raise ValueError(f"Invalid current price for buying: {currentPrice} on day {i} for stock {b}")
-
-				if capital < z:  # "buy" all only if you don't have enough capital
+			if a == -1 and b >= 0 and capital > 0 :	 # Suggested action is "buy"
+				currentPrice = currentPriceVec[b]  # The current price of stock
+				if capital < z :  # "buy" allonly if you don't have enough capital
 					z = capital
-				
-				stockHolding[i][b] += z * (1 - transFeeRate) / currentPrice  # Buy stock using cash
-				capital = capital - z  # Update cash
+				stockHolding[i][b] += z*(1-transFeeRate) / currentPrice # Buy stock using cash
+				capital = capital - z  # Cash
 				realAction[i] = 1
 
-			elif b == -1 and a >= 0 and stockHolding[i][a] > 0:  # Suggested action is "sell"
+			elif b == -1 and a >= 0 and stockHolding[i][a] > 0 :  # Suggested action is "sell"
 				currentPrice = currentPriceVec[a]  # The current price of stock
-				if currentPrice <= 0:
-					raise ValueError(f"Invalid current price for selling: {currentPrice} on day {i} for stock {a}")
-
 				sellStock = z / currentPrice
-				if stockHolding[i][a] < sellStock:  # "sell" all only if you don't have enough stock holding
+				if stockHolding[i][a] < sellStock :  # "sell" all only if you don't have enough stock holding
 					sellStock = stockHolding[i][a]
-				
-				getCash = sellStock * currentPrice * (1 - transFeeRate)  # Sell stock to have cash
-				if getCash < 0:
-					raise ValueError(f"Calculated cash from selling is negative: {getCash} on day {i} for stock {a}")
-				
-				capital = capital + getCash  # Update capital with cash from sold stock
-				stockHolding[i][a] -= sellStock  # Update stock holding
+				getCash = sellStock * currentPrice*(1-transFeeRate)	 # Sell stock to have cash
+				capital = capital + getCash	 # get cash from sell stock
+				stockHolding[i][a] -= sellStock	 # Stocking holding
 				realAction[i] = -1
-
-			elif a >= 0 and b >= 0 and stockHolding[i][a] > 0:  # Suggested action is "buy" and "sell"
+			elif a >= 0 and b >= 0 and stockHolding[i][a] > 0 :  # Suggested action is "buy" and "sell"
 				currentPriceSell = currentPriceVec[a]  # The current price of sell stock
 				currentPriceBuy = currentPriceVec[b]  # The current price of buy stock
-
-				if currentPriceSell <= 0 or currentPriceBuy <= 0:
-					raise ValueError(f"Invalid price(s) for stock exchange on day {i}: selling stock {a} at {currentPriceSell}, buying stock {b} at {currentPriceBuy}")
-				
 				sellStock = z / currentPriceSell
-				if stockHolding[i][a] < sellStock:  # "sell" all only if you don't have enough stock holding
+				if stockHolding[i][a] < sellStock :  # "sell" all only if you don't have enough stock holding
 					sellStock = stockHolding[i][a]
-
-				getCash = sellStock * currentPriceSell * (1 - transFeeRate)  # Sell stock to have cash
-				if getCash < 0:
-					raise ValueError(f"Calculated cash from stock exchange is negative: {getCash} on day {i} for stock {a}")
-
-				stockHolding[i][a] -= sellStock  # Update selling stock holding
-				stockHolding[i][b] += getCash * (1 - transFeeRate) / currentPriceBuy  # Buy stock using cash
+				getCash = sellStock * currentPriceSell*(1-transFeeRate)	 # Sell stock to have cash
+				stockHolding[i][a] -= sellStock	 # Stocking holding
+				stockHolding[i][b] += getCash*(1-transFeeRate) / currentPriceBuy # Buy stock using cash
 				realAction[i] = 2
-
 			else:
-				raise AssertionError(f"Unexpected action configuration: a = {a}, b = {b}, day = {i}, capital = {capital}, stock holdings = {stockHolding[i]}")
+				assert False
 		else:
-			assert AssertionError(f"day : {day} preday : {preDay} z : {z}")
+			print(f"dat : {day} preday : {preDay} z : {z}")
+			assert False
 
 
 	## calculate holding cash day
