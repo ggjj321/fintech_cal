@@ -93,7 +93,7 @@ def computeReturnRate(priceMat, transFeeRate, actionMat, K, problem_type):
 			else:
 				raise AssertionError(f"Unexpected action configuration: a = {a}, b = {b}, day = {i}, capital = {capital}, stock holdings = {stockHolding[i]}")
 		else:
-			assert False
+			assert AssertionError(f"day : {day} preday : {preDay} z : {z}")
 
 
 	## calculate holding cash day
