@@ -165,6 +165,133 @@ def myAction01(priceMat, transFeeRate):
 # An approach that allow non-consecutive K days to hold all cash without any stocks
 def myAction02(priceMat, transFeeRate, K):
     actionMat = []  # An k-by-4 action matrix which holds k transaction records.
+    s = len(priceMat)          # 交易天数
+    a = len(priceMat[0])       # 股票数量
+    initial_cash = 100       # 初始资金
+    max_cash_days = K        # 至少持有现金的天数
+    
+    # 将价格数组转换为 NumPy 数组，便于计算
+    prices = np.array(priceMat)
+
+    # dp_value 存储在每个状态下的最大资金量
+    dp_value = np.full((s + 1, max_cash_days + 1, a + 1), -np.inf)
+    # dp_prev 存储前一个状态的索引，用于回溯路径
+    dp_prev = np.empty((s + 1, max_cash_days + 1, a + 1), dtype=object)
+    # dp_action 存储达到当前状态的操作
+    dp_action = np.empty((s + 1, max_cash_days + 1, a + 1), dtype=object)
+
+    # 初始状态：第 0 天，持有现金，剩余需要持有现金的天数为 k
+    dp_value[0][K][0] = initial_cash
+    
+    # 动态规划过程
+    for day in range(1, s + 1):
+        for remaining_cash_days in range(max_cash_days + 1):
+            for holding in range(a + 1):
+                # 检查状态是否可达
+                if dp_value[day - 1][remaining_cash_days][holding] == -np.inf:
+                    continue
+
+                current_value = dp_value[day - 1][remaining_cash_days][holding]
+
+                # 计算剩余天数，确保 remaining_cash_days 不超过剩余天数
+                remaining_days = s - day + 1
+                if remaining_cash_days > remaining_days:
+                    continue
+
+                # 持有现金的状态
+                if holding == 0:
+                    # 继续持有现金
+                    new_remaining_cash_days = max(0, remaining_cash_days - 1)
+                    if current_value > dp_value[day][new_remaining_cash_days][0]:
+                        dp_value[day][new_remaining_cash_days][0] = current_value
+                        dp_prev[day][new_remaining_cash_days][0] = (remaining_cash_days, 0)
+                        dp_action[day][new_remaining_cash_days][0] = None  # 无操作
+
+                    # 购买股票 j
+                    for j in range(1, a + 1):
+                        stock_price = prices[day - 1][j - 1]
+                        if stock_price <= 0:
+                            continue  # 跳过价格为 0 的股票
+
+                        # 计算购买后的资金量（以股票数量表示）
+                        new_value = (current_value * (1 - transFeeRate)) / stock_price
+
+                        if new_value > dp_value[day][remaining_cash_days][j]:
+                            dp_value[day][remaining_cash_days][j] = new_value
+                            dp_prev[day][remaining_cash_days][j] = (remaining_cash_days, 0)
+                            dp_action[day][remaining_cash_days][j] = [day - 1, -1, j - 1, current_value * (1 - transFeeRate)]
+                else:
+                    # 持有股票，股票索引为 holding - 1
+                    stock_index = holding - 1
+                    stock_price = prices[day - 1][stock_index]
+
+                    # 继续持有股票
+                    if current_value > dp_value[day][remaining_cash_days][holding]:
+                        dp_value[day][remaining_cash_days][holding] = current_value
+                        dp_prev[day][remaining_cash_days][holding] = (remaining_cash_days, holding)
+                        dp_action[day][remaining_cash_days][holding] = None  # 无操作
+
+                    # 卖出股票，转换为现金
+                    new_remaining_cash_days = max(0, remaining_cash_days - 1)
+                    sell_cash = current_value * stock_price * (1 - transFeeRate)
+                    if sell_cash > dp_value[day][new_remaining_cash_days][0]:
+                        dp_value[day][new_remaining_cash_days][0] = sell_cash
+                        dp_prev[day][new_remaining_cash_days][0] = (remaining_cash_days, holding)
+                        dp_action[day][new_remaining_cash_days][0] = [day - 1, stock_index, -1, sell_cash]
+
+                    # 卖出股票 i，购买股票 j
+                    for j in range(1, a + 1):
+                        if j == holding:
+                            continue  # 不购买同一支股票
+                        new_stock_price = prices[day - 1][j - 1]
+                        if new_stock_price <= 0:
+                            continue  # 跳过价格为 0 的股票
+
+                        # 卖出股票 i，购买股票 j
+                        switch_cash = current_value * stock_price * (1 - transFeeRate)
+                        new_value = (switch_cash * (1 - transFeeRate)) / new_stock_price
+
+                        if new_value > dp_value[day][remaining_cash_days][j]:
+                            dp_value[day][remaining_cash_days][j] = new_value
+                            dp_prev[day][remaining_cash_days][j] = (remaining_cash_days, holding)
+                            dp_action[day][remaining_cash_days][j] = [day - 1, stock_index, j - 1, switch_cash]
+    
+    # 回溯找到最大资金量的路径
+    max_value = -np.inf
+    end_state = None
+    for holding in range(a + 1):
+        if dp_value[s][0][holding] > max_value:
+            max_value = dp_value[s][0][holding]
+            end_state = (s, 0, holding)
+
+    # 如果持有股票，需要在最后一天卖出
+    if end_state[2] != 0:
+        holding = end_state[2]
+        stock_index = holding - 1
+        stock_price = prices[s - 1][stock_index]
+        final_cash = dp_value[s][0][holding] * stock_price * (1 - transFeeRate)
+        dp_value[s][0][0] = final_cash
+        dp_prev[s][0][0] = (0, holding)
+        dp_action[s][0][0] = [s - 1, stock_index, -1, final_cash]
+        end_state = (s, 0, 0)
+        max_value = final_cash
+
+    # 构建 actionMat
+    actionMat = []
+    state = end_state
+    while state[0] > 0:
+        day, remaining_cash_days, holding = state
+        action = dp_action[day][remaining_cash_days][holding]
+        prev_remaining_cash_days, prev_holding = dp_prev[day][remaining_cash_days][holding]
+
+        if action is not None:
+            actionMat.append(action)
+
+        state = (day - 1, prev_remaining_cash_days, prev_holding)
+
+    # 由于是倒序回溯，需要将 actionMat 反转
+    actionMat.reverse()
+    
     return actionMat
 
 # An approach that allow consecutive K days to hold all cash without any stocks    
