@@ -57,7 +57,8 @@ def double_and_add(n, point, callback_get_INFINITY):
     num_doubles = 0 
     num_additions = 0  
 
-    binary_n = bin(n)[2:] 
+    binary_n = bin(n)[3:] 
+    result = result + point
 
     for bit in binary_n:
         result = result.double()
@@ -79,10 +80,39 @@ def optimized_double_and_add(n, point, callback_get_INFINITY):
     num_doubles = 0
     num_additions = 0
     
-    print(n)
-    print(point)
-
-    return result, num_doubles, num_additions
+    def optimized_alg(binary_num, result, num_doubles, num_additions):
+        if binary_num[0] == "1" and all(char == '0' for char in binary_num[1:]):
+            zero_count = binary_num[1:].count('0')
+            
+            for _ in range(zero_count):
+                result = result.double()
+                num_doubles += 1
+            return binary_num, result, num_doubles, num_additions
+        
+        if binary_num[-1] == "0":
+            binary_num = binary_num[:-1]
+            binary_num, result, num_doubles, num_additions = optimized_alg(binary_num, result, num_doubles, num_additions)
+            result = result.double()
+            num_doubles += 1
+            return binary_num, result, num_doubles, num_additions
+        
+        if binary_num[-1] == "1":
+            converted_int = int(binary_num, 2)
+            converted_int += 1
+            converted_binarty = bin(converted_int)[2:-1]
+            binary_num, result, num_doubles, num_additions = optimized_alg(converted_binarty, result, num_doubles, num_additions)
+            result = result.double()
+            result = result + (-point)
+            num_doubles += 1
+            num_additions += 1
+            return binary_num, result, num_doubles, num_additions
+    
+    binary_num = bin(n)[2:] 
+    result = result + point
+    
+    binary_num, result, re_num_doubles, re_num_additions = optimized_alg(binary_num, result, num_doubles, num_additions)
+    
+    return binary_num, result, re_num_doubles, re_num_additions
 
 
 #############################################################
