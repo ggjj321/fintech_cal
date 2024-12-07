@@ -104,8 +104,6 @@ def optimized_double_and_add(n, point, callback_get_INFINITY):
 # Problem 6: Sign a Bitcoin transaction with a random k and private key d
 def sign_transaction(private_key, hashID, callback_getG, callback_get_n, callback_randint):
     """Sign a bitcoin transaction using the private key."""
-
-    """ Your code here """ 
     def mod_inverse(a, n):
         t, newt = 0, 1
         r, newr = n, a
@@ -121,44 +119,46 @@ def sign_transaction(private_key, hashID, callback_getG, callback_get_n, callbac
     
     def calculate_z(n, e):
         L_n = n.bit_length()
-
-        binary_e = bin(e)[2:] 
+        binary_e = bin(e)[2:]  # 將 e 轉為二進位，去掉 '0b' 前綴
         if len(binary_e) > L_n:
-            z_binary = binary_e[:L_n] 
+            z_binary = binary_e[:L_n]
         else:
-            z_binary = binary_e.zfill(L_n)  
+            z_binary = binary_e.zfill(L_n)
+        return int(z_binary, 2)
 
-        z = int(z_binary, 2)
-        return z
-    
-    G = callback_getG()
-    n = callback_get_n()
-    z = calculate_z(n, int(hashID))
-    
+    G = callback_getG()  
+    n = callback_get_n()  
+    e = int(hashID, 16)  
+    z = calculate_z(n, e)  
+
     while True:
         k = callback_randint(1, n - 1)
-
-        binary_n = bin(k)[2:] 
-        point = G
-
-        for bit in binary_n:
-            point = point.double()
-            if bit == '1':
-                point = point + G
-                
+        
+        def double_and_add(k, G):
+            result = None  # 無窮遠點
+            current = G
+            for bit in bin(k)[2:]:  # 二進制逐位處理
+                if result is None:
+                    result = current
+                else:
+                    result = result.double()
+                    if bit == '1':
+                        result = result + current
+            return result
+        
+        point = double_and_add(k, G)
         x = point.x()
 
         r = x % n
         if r == 0:
             continue
+
         k_inv = mod_inverse(k, n)
         s = (k_inv * (z + r * private_key)) % n
         if s == 0:
             continue  
-
-        break
-
-    return (r, s)
+        
+        return (r, s)
 
 
 ##############################################################
