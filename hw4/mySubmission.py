@@ -76,43 +76,28 @@ def optimized_double_and_add(n, point, callback_get_INFINITY):
     """Optimized Double-and-Add algorithm that simplifies sequences of consecutive 1's."""
 
     """ Your code here """
+    if n == 0:
+        return callback_get_INFINITY(), 0, 0
+
+    if n == 1:
+        return point, 0, 0
+    
     result = callback_get_INFINITY()
-    num_doubles = 0
-    num_additions = 0
-    
-    def optimized_alg(binary_num, result, num_doubles, num_additions):
-        if binary_num[0] == "1" and all(char == '0' for char in binary_num[1:]):
-            zero_count = binary_num[1:].count('0')
-            
-            for _ in range(zero_count):
-                result = result.double()
-                num_doubles += 1
-            return binary_num, result, num_doubles, num_additions
-        
-        if binary_num[-1] == "0":
-            binary_num = binary_num[:-1]
-            binary_num, result, num_doubles, num_additions = optimized_alg(binary_num, result, num_doubles, num_additions)
-            result = result.double()
-            num_doubles += 1
-            return binary_num, result, num_doubles, num_additions
-        
-        if binary_num[-1] == "1":
-            converted_int = int(binary_num, 2)
-            converted_int += 1
-            converted_binarty = bin(converted_int)[2:-1]
-            binary_num, result, num_doubles, num_additions = optimized_alg(converted_binarty, result, num_doubles, num_additions)
-            result = result.double()
-            result = result + (-point)
-            num_doubles += 1
-            num_additions += 1
-            return binary_num, result, num_doubles, num_additions
-    
-    binary_num = bin(n)[2:] 
+    num_doubles = 0 
+    num_additions = 0  
+
+    binary_n = bin(n)[3:] 
     result = result + point
-    
-    binary_num, result, re_num_doubles, re_num_additions = optimized_alg(binary_num, result, num_doubles, num_additions)
-    
-    return binary_num, result, re_num_doubles, re_num_additions
+
+    for bit in binary_n:
+        result = result.double()
+        num_doubles += 1
+
+        if bit == '1':
+            result = result + point
+            num_additions += 1
+
+    return result, num_doubles, num_additions
 
 
 #############################################################
@@ -120,12 +105,60 @@ def optimized_double_and_add(n, point, callback_get_INFINITY):
 def sign_transaction(private_key, hashID, callback_getG, callback_get_n, callback_randint):
     """Sign a bitcoin transaction using the private key."""
 
-    """ Your code here """
+    """ Your code here """ 
+    def mod_inverse(a, n):
+        t, newt = 0, 1
+        r, newr = n, a
+        while newr != 0:
+            quotient = r // newr
+            r, newr = newr, r - quotient * newr
+            t, newt = newt, t - quotient * newt
+        if r > 1:
+            raise Exception('a is not invertible')
+        if t < 0:
+            t = t + n
+        return t
+    
+    def calculate_z(n, e):
+        L_n = n.bit_length()
+
+        binary_e = bin(e)[2:] 
+        if len(binary_e) > L_n:
+            z_binary = binary_e[:L_n] 
+        else:
+            z_binary = binary_e.zfill(L_n)  
+
+        z = int(z_binary, 2)
+        return z
+    
     G = callback_getG()
     n = callback_get_n()
-    signature = callback_randint()
+    z = calculate_z(n, int(hashID))
+    
+    while True:
+        k = callback_randint(1, n - 1)
 
-    return signature
+        binary_n = bin(k)[2:] 
+        point = G
+
+        for bit in binary_n:
+            point = point.double()
+            if bit == '1':
+                point = point + G
+                
+        x = point.x()
+
+        r = x % n
+        if r == 0:
+            continue
+        k_inv = mod_inverse(k, n)
+        s = (k_inv * (z + r * private_key)) % n
+        if s == 0:
+            continue  
+
+        break
+
+    return (r, s)
 
 
 ##############################################################
@@ -137,7 +170,26 @@ def verify_signature(public_key, hashID, signature, callback_getG, callback_get_
     G = callback_getG()
     n = callback_get_n()
     infinity_point = callback_get_INFINITY()
-    is_valid_signature = TRUE if callback_get_n() > 0 else FALSE
+    r, s = signature
+    
+    if public_key == infinity_point:
+        return False
+    
+    if not (1 <= r < n and 1 <= s < n):
+        return False
+    
+    e = int(hashID, 16)
+    
+    w = pow(s, n-2, n) 
+    
+    u1 = (e * w) % n
+    u2 = (r * w) % n
+    
+    point = u1 * G + u2 * public_key
 
-    return is_valid_signature
+    if point == infinity_point:
+        return False
 
+    x1 = point.x() % n
+    
+    return x1 == r
